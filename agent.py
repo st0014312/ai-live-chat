@@ -12,14 +12,13 @@ from langgraph.graph import StateGraph, END, START
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
 import uuid
+from langgraph.graph.message import AnyMessage, add_messages
 
 
 class AgentState(TypedDict):
     """State for the agent."""
 
-    thread_id: str
-    messages: List[Dict[str, Any]]
-    next: str
+    messages: Annotated[list[AnyMessage], add_messages]
     context: Optional[List[Any]]
     error: Optional[str]
 
@@ -64,24 +63,22 @@ class AIChatAgent:
         # Create the agent graph
         self.agent = self._create_agent_graph()
 
-    def _create_agent_graph(self) -> Any:
+    def _create_agent_graph(self) -> AgentState:
         """Create the agent graph with all necessary nodes."""
 
         def retrieve(state: AgentState) -> AgentState:
             """Retrieve relevant documents from knowledge base."""
             try:
                 messages = state["messages"]
-                last_message = messages[-1]["content"]
+                last_message = messages[-1].content
 
                 # Get relevant documents
                 docs = self.knowledge_base.similarity_search(last_message, k=3)
 
                 # Update state with retrieved documents
                 state["context"] = docs
-                state["next"] = "generate"
             except Exception as e:
                 state["error"] = f"Error retrieving documents: {str(e)}"
-                state["next"] = END
             return state
 
         def generate(state: AgentState) -> AgentState:
@@ -118,6 +115,7 @@ Please provide a helpful and accurate response based on the above information.""
                     ]
                 )
 
+                # print("state", state)
                 # Generate response
                 response = self.llm.invoke(
                     prompt.format(
@@ -127,13 +125,9 @@ Please provide a helpful and accurate response based on the above information.""
                 )
 
                 # Update state
-                state["messages"].append(
-                    {"role": "assistant", "content": response.content}
-                )
-                state["next"] = END
+                state["messages"].append(response)
             except Exception as e:
                 state["error"] = f"Error generating response: {str(e)}"
-                state["next"] = END
             return state
 
         # Create the graph
@@ -158,11 +152,7 @@ Please provide a helpful and accurate response based on the above information.""
 
             # Create initial state
             state = {
-                "thread_id": thread_id,
                 "messages": [{"role": "user", "content": user_input}],
-                "next": "retrieve",
-                "context": None,
-                "error": None,
             }
 
             # Configure the run with thread ID for memory
@@ -183,7 +173,7 @@ Please provide a helpful and accurate response based on the above information.""
                 }
 
             # Get the response
-            response = result["messages"][-1]["content"]
+            response = result["messages"][-1].content
 
             # Get relevant context
             relevant_docs = self.get_relevant_context(user_input)
