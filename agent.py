@@ -9,10 +9,12 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langgraph.graph import StateGraph, END, START
-from langgraph.prebuilt import ToolNode
+from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.memory import MemorySaver
 import uuid
 from langgraph.graph.message import AnyMessage, add_messages
+from langchain_core.messages import HumanMessage
+from langchain.tools.retriever import create_retriever_tool
 
 
 class AgentState(TypedDict):
@@ -51,6 +53,7 @@ class AIChatAgent:
         # Initialize components
         self.embeddings = self._initialize_embeddings(embedding_provider)
         self.knowledge_base = self._initialize_knowledge_base()
+        self.retriever_tool = self._initialize_retriever_tool()
         self.llm = self._initialize_llm(
             provider=llm_provider,
             model_name=self.model_name,
@@ -66,26 +69,34 @@ class AIChatAgent:
     def _create_agent_graph(self) -> AgentState:
         """Create the agent graph with all necessary nodes."""
 
-        def retrieve(state: AgentState) -> AgentState:
-            """Retrieve relevant documents from knowledge base."""
+        def generate_query_or_response(state: AgentState) -> AgentState:
+            """Generate query or response based on the state."""
             try:
-                messages = state["messages"]
-                last_message = messages[-1].content
-
-                # Get relevant documents
-                docs = self.knowledge_base.similarity_search(last_message, k=3)
-
-                # Update state with retrieved documents
-                state["context"] = docs
+                response = self.llm.bind_tools([self.retriever_tool]).invoke(
+                    state["messages"]
+                )
+                state["messages"].append(response)
+                return state
             except Exception as e:
-                state["error"] = f"Error retrieving documents: {str(e)}"
-            return state
+                state["error"] = f"Error generating response: {str(e)}"
+                return state
 
         def generate(state: AgentState) -> AgentState:
             """Generate response using LLM."""
             try:
+                print("state", state)
                 messages = state["messages"]
-                context = state.get("context", [])
+                # Get the content from the tool message
+                tool_message = state["messages"][-1]
+
+                # Check if we have valid content from the tool
+                if not tool_message.content:
+                    # If no content, generate a response indicating no information found
+                    response = self.llm.invoke(
+                        "I couldn't find specific information about that in our knowledge base. Could you please rephrase your question or ask about something else?"
+                    )
+                    state["messages"].append(response)
+                    return state
 
                 # Create a more comprehensive prompt
                 prompt = ChatPromptTemplate.from_messages(
@@ -98,7 +109,7 @@ Guidelines:
 1. Use the provided context from our knowledge base to answer questions accurately
 2. If the answer isn't in the context, say you don't have that information
 3. Keep responses concise (2-3 sentences maximum)
-4. If the question is about previous conversation, use the chat history
+4. Maintain awareness of user identity and preferences mentioned in the conversation
 5. For product questions, include relevant details like price, features, and availability
 6. For shipping/returns questions, be specific about policies and timeframes
 7. For store information, provide accurate contact details and hours
@@ -107,20 +118,23 @@ Context from knowledge base:
 {context}
 
 Previous conversation:
-{messages}
-
-Please provide a helpful and accurate response based on the above information.""",
+{formatted_messages}""",
                         ),
-                        MessagesPlaceholder(variable_name="messages"),
                     ]
                 )
 
-                # print("state", state)
+                # Format messages for better context
+                formatted_messages = []
+                for msg in messages[:-1]:  # Exclude the last message (tool response)
+                    if hasattr(msg, "content"):
+                        role = "user" if isinstance(msg, HumanMessage) else "assistant"
+                        formatted_messages.append(f"{role}: {msg.content}")
+
                 # Generate response
                 response = self.llm.invoke(
                     prompt.format(
-                        context="\n".join([doc.page_content for doc in context]),
-                        messages=messages,
+                        context=tool_message.content,  # Use the tool response content directly
+                        formatted_messages="\n".join(formatted_messages),
                     )
                 )
 
@@ -134,11 +148,17 @@ Please provide a helpful and accurate response based on the above information.""
         workflow = StateGraph(AgentState)
 
         # Add nodes
-        workflow.add_node("retrieve", retrieve)
+        workflow.add_node("generate_query_or_response", generate_query_or_response)
+        workflow.add_node("retrieve", ToolNode([self.retriever_tool]))
         workflow.add_node("generate", generate)
 
         # Add edges
-        workflow.add_edge(START, "retrieve")
+        workflow.add_edge(START, "generate_query_or_response")
+        workflow.add_conditional_edges(
+            "generate_query_or_response",
+            tools_condition,
+            {"tools": "retrieve", END: END},
+        )
         workflow.add_edge("retrieve", "generate")
         workflow.add_edge("generate", END)
 
@@ -165,50 +185,19 @@ Please provide a helpful and accurate response based on the above information.""
             )
 
             if result.get("error"):
-                return {
-                    "response": f"Error: {result['error']}",
-                    "context": [],
-                    "sources": [],
-                    "thread_id": thread_id,
-                }
+                return {"response": f"Error: {result['error']}"}
 
             # Get the response
-            response = result["messages"][-1].content
+            response = result["messages"][-1]
 
-            # Get relevant context
-            relevant_docs = self.get_relevant_context(user_input)
-
-            return {
-                "response": response,
-                "context": relevant_docs,
-                "sources": result.get("context", []),
-                "thread_id": thread_id,
-            }
+            return {"response": response}
         except Exception as e:
-            return {
-                "response": f"Error: {str(e)}",
-                "context": [],
-                "sources": [],
-                "thread_id": thread_id,
-            }
-
-    def get_relevant_context(self, query: str, k: int = 3) -> List[Dict]:
-        """Get relevant context from the knowledge base."""
-        try:
-            docs = self.knowledge_base.similarity_search(query, k=k)
-            return [
-                {"content": doc.page_content, "metadata": doc.metadata} for doc in docs
-            ]
-        except Exception as e:
-            print(f"Error getting relevant context: {str(e)}")
-            return []
+            return {"response": f"Error: {str(e)}"}
 
     def _initialize_embeddings(self, provider: str):
         """Initialize the embedding model."""
         if provider == "openai":
-            return HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
-            )
+            return OpenAIEmbeddings(model_name="text-embedding-3-small")
         elif provider == "huggingface":
             return HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2"
@@ -234,6 +223,20 @@ Please provide a helpful and accurate response based on the above information.""
             )
         else:
             raise ValueError(f"Unsupported LLM provider: {provider}")
+
+    def _initialize_retriever_tool(self):
+        """Initialize the retriever."""
+        retriever = self.knowledge_base.as_retriever(
+            search_kwargs={
+                "k": 3,  # Limit to top 3 most relevant chunks
+                "fetch_k": 5,  # Fetch more initially to filter
+            }
+        )
+        return create_retriever_tool(
+            retriever,
+            "retrieve_knowledge_base",
+            "Search and return relevant information from the knowledge base. Only return information that directly answers the user's question.",
+        )
 
     def _initialize_knowledge_base(self):
         """Initialize the knowledge base from markdown files."""

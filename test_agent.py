@@ -59,7 +59,7 @@ def main():
         try:
             # Get response from agent
             response = agent.chat(user_input, thread_id)
-            print(f"\nAI: {response['response']}")
+            response["response"].pretty_print()
 
         except Exception as e:
             print(f"\nError: {str(e)}")
