@@ -215,6 +215,186 @@ The agent is designed using a **Retrieval-Augmented Generation (RAG)** architect
 | Database              | PostgreSQL, Redis                                                                                   |
 | Deployment            | Docker, Cloud Platforms (AWS/GCP)                                                                   |
 
+## 🔍 LangSmith Tracing & Monitoring
+
+The AI Live Chat Agent integrates with [LangSmith](https://smith.langchain.com/) for comprehensive tracing, monitoring, and debugging of agent interactions. This provides valuable insights into how the agent processes queries and makes routing decisions.
+
+### Live Tracing Example
+
+You can view a live example of the agent in action with full tracing:
+
+**[View Live Agent Tracing](https://smith.langchain.com/public/c120df77-91ed-4d1e-98bd-8d5a20a00e59/r)**
+
+This trace shows:
+- **Agent Routing**: How the supervisor decides between SQL agent and knowledge base agent
+- **Query Processing**: Step-by-step breakdown of how user questions are processed
+- **Tool Usage**: Which tools are called and their results
+- **Response Generation**: How final responses are constructed
+- **Performance Metrics**: Timing and token usage for each step
+
+### Setting Up LangSmith Tracing
+
+1. **Get Your LangSmith API Key**
+   ```bash
+   # Sign up at https://smith.langchain.com/
+   # Get your API key from the settings page
+   ```
+
+2. **Configure Environment Variables**
+   ```bash
+   # Add to your .env file
+   LANGSMITH_API_KEY=your-langsmith-api-key
+   LANGSMITH_PROJECT=ai-live-chat-agent
+   LANGSMITH_TRACING=true
+   ```
+
+3. **Enable Tracing in Your Code**
+   ```python
+   import os
+   from langsmith import Client
+   
+   # Initialize LangSmith client
+   client = Client()
+   
+   # Your agent will automatically send traces to LangSmith
+   ```
+
+### What You Can Monitor
+
+#### 🔄 **Agent Routing Decisions**
+- See which agent (SQL or Knowledge Base) is selected for each query
+- Understand the reasoning behind routing decisions
+- Identify patterns in query classification
+
+#### 📊 **Performance Metrics**
+- **Response Time**: Track how long each query takes to process
+- **Token Usage**: Monitor token consumption for cost optimization
+- **Tool Efficiency**: See which tools are most/least effective
+
+#### 🐛 **Debugging & Troubleshooting**
+- **Step-by-step Execution**: Follow the exact path of query processing
+- **Error Tracking**: Identify where and why errors occur
+- **Input/Output Analysis**: See what goes in and what comes out at each step
+
+#### 📈 **Usage Analytics**
+- **Query Patterns**: Understand what types of questions users ask most
+- **Agent Performance**: Compare effectiveness of different agents
+- **User Satisfaction**: Track response quality and relevance
+
+### LangSmith Dashboard Features
+
+#### **Trace View**
+- **Timeline Visualization**: See the chronological flow of agent operations
+- **Step Details**: Click on any step to see detailed input/output
+- **Token Tracking**: Monitor token usage at each step
+- **Error Highlighting**: Quickly identify failed operations
+
+#### **Project Analytics**
+- **Query Volume**: Track how many queries are processed over time
+- **Success Rates**: Monitor the percentage of successful responses
+- **Performance Trends**: Identify performance improvements or degradations
+- **Cost Analysis**: Track API costs and usage patterns
+
+#### **Team Collaboration**
+- **Shared Traces**: Share specific traces with team members
+- **Comments & Notes**: Add context and notes to traces
+- **Version Comparison**: Compare different versions of your agent
+
+### Example Trace Analysis
+
+When a user asks "How many customers do we have?", the trace shows:
+
+1. **Supervisor Decision**: Agent determines this is a database query
+2. **SQL Agent Activation**: Routes to SQL agent for processing
+3. **Query Generation**: SQL agent generates appropriate SQL query
+4. **Database Execution**: Query is executed against the database
+5. **Result Processing**: Raw results are formatted into natural language
+6. **Response Delivery**: Final response is sent to the user
+
+### Best Practices for LangSmith
+
+#### **Organizing Traces**
+```python
+# Use descriptive project names
+LANGSMITH_PROJECT=ai-live-chat-production
+
+# Add tags for better organization
+tags = ["production", "customer-support", "sql-queries"]
+```
+
+#### **Monitoring Alerts**
+- Set up alerts for high error rates
+- Monitor response time thresholds
+- Track token usage limits
+
+#### **Performance Optimization**
+- Identify slow queries and optimize them
+- Find redundant tool calls
+- Optimize agent routing logic
+
+### Integration with Existing Monitoring
+
+LangSmith can be integrated with your existing monitoring stack:
+
+```python
+# Send LangSmith data to your monitoring system
+from langsmith import Client
+import logging
+
+client = Client()
+
+# Custom logging integration
+def log_to_monitoring(trace_data):
+    # Send to your monitoring system (DataDog, New Relic, etc.)
+    logging.info(f"Agent trace: {trace_data}")
+```
+
+### Privacy & Security
+
+- **Data Retention**: Configure how long traces are kept
+- **PII Filtering**: Automatically filter sensitive information
+- **Access Control**: Manage who can view traces
+- **Compliance**: Ensure tracing meets your compliance requirements
+
+### Getting Started with Tracing
+
+1. **Quick Start**
+   ```bash
+   # Install LangSmith
+   pip install langsmith
+   
+   # Set environment variables
+   export LANGSMITH_API_KEY=your-key
+   export LANGSMITH_PROJECT=my-project
+   
+   # Run your agent - tracing starts automatically
+   python test_agent.py
+   ```
+
+2. **View Your First Trace**
+   - Go to https://smith.langchain.com/
+   - Navigate to your project
+   - Click on any trace to see the detailed execution
+
+3. **Customize Tracing**
+   ```python
+   # Add custom metadata to traces
+   from langsmith import Client
+   
+   client = Client()
+   
+   # Add custom tags and metadata
+   with client.trace(
+       name="custom_operation",
+       tags=["custom", "important"],
+       metadata={"user_id": "123", "session_id": "abc"}
+   ):
+       # Your agent code here
+       pass
+   ```
+
+LangSmith tracing provides unprecedented visibility into your AI agent's decision-making process, making it easier to debug, optimize, and improve the user experience.
+
 ## 🔧 Enhanced Features
 
 ### SQL Database Capabilities
