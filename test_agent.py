@@ -1,4 +1,4 @@
-from agent import AIChatAgent
+from agent import Agent
 import argparse
 import uuid
 
@@ -31,7 +31,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize the agent with specified providers
-    agent = AIChatAgent(
+    agent = Agent(
         llm_provider=args.llm,
         embedding_provider=args.embeddings,
         model_name=args.model,
@@ -59,7 +59,6 @@ def main():
         try:
             # Get response from agent
             response = agent.chat(user_input, thread_id)
-            response["response"].pretty_print()
 
         except Exception as e:
             print(f"\nError: {str(e)}")

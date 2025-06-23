@@ -1,6 +1,6 @@
 # 🤖 AI Live Chat Agent for Online Stores
 
-This is an open-source AI-powered customer service agent designed to handle live chat for online shops. The agent can answer customer questions based on a knowledge base and simulate order lookup and processing. It is lightweight, easy to set up, and customizable for developers and small businesses.
+This is an open-source AI-powered customer service agent designed to handle live chat for online shops. The agent can answer customer questions based on a knowledge base, query SQL databases for customer data and analytics, and simulate order lookup and processing. It is lightweight, easy to set up, and customizable for developers and small businesses.
 
 ## 🚀 Quick Start
 
@@ -37,9 +37,18 @@ This is an open-source AI-powered customer service agent designed to handle live
    # Copy the example environment file
    cp .env.example .env
    
-   # Edit .env and add your OpenAI API key
+   # Edit .env and add your API keys and configuration
    # OPENAI_API_KEY=your-api-key-here
+   # LANGSMITH_API_KEY=your-langsmith-api-key-here
    ```
+
+   The following environment variables are available:
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `OPENROUTER_API_KEY`: (Optional) Your OpenRouter API key
+   - `HUGGINGFACE_API_KEY`: (Optional) Your HuggingFace API key for embeddings
+   - `LANGSMITH_API_KEY`: (Optional) Your LangSmith API key for tracing and monitoring
+   - `LANGSMITH_PROJECT`: (Optional) Your LangSmith project name
+   - `LANGSMITH_TRACING`: (Optional) Enable/disable LangSmith tracing (true/false)
 
 4. **Run the test script**
    ```bash
@@ -136,6 +145,15 @@ Type 'exit' to end the conversation
 You: What are your shipping policies?
 AI: Based on our shipping policies, we offer standard shipping (3-5 business days) and express shipping (1-2 business days). All orders over $50 qualify for free standard shipping. International shipping is available to select countries with delivery times varying by location.
 
+You: How many customers do you have?
+AI: Based on the database, we have 59 customers in our system.
+
+You: What are the top 3 best selling artists?
+AI: The top 3 best selling artists are:
+1. Iron Maiden - 140 units sold
+2. U2 - 107 units sold
+3. Metallica - 91 units sold
+
 You: How do I return an item?
 AI: To return an item, you need to initiate the return within 30 days of delivery. Please contact our customer service with your order number and reason for return. Once approved, you'll receive a return shipping label. Items must be in original condition with all tags attached.
 
@@ -149,29 +167,36 @@ Many online stores lack 24/7 customer support or cannot handle a high volume of 
 
 - Provide an easily deployable AI chat agent for e-commerce websites
 - Answer common customer questions using a knowledge base
+- Query SQL databases for customer data, sales analytics, and inventory information
 - Simulate basic order inquiry and handling
 - Allow developers to extend or integrate the agent into their own platforms
 
 ## 🧠 Design Overview
 
-The agent is designed using a **Retrieval-Augmented Generation (RAG)** architecture:
+The agent is designed using a **Retrieval-Augmented Generation (RAG)** architecture with **SQL Database Integration**:
 
 1. **Knowledge Retrieval**
 
    - When a user asks a question, the system retrieves relevant information from the knowledge base
    - A language model generates a natural-sounding response based on the retrieved context
 
-2. **Flexible Knowledge Base Format**
+2. **SQL Database Integration**
+
+   - The agent can query SQL databases for customer data, sales analytics, and inventory information
+   - Uses LangChain's SQLDatabaseToolkit for intelligent database querying
+   - Supports complex queries like "top selling artists", "customer analytics", "revenue reports"
+
+3. **Flexible Knowledge Base Format**
 
    - Supports Markdown (`.md`), plain text (`.txt`), or JSON documents
    - Store-specific content such as FAQs, return policies, and shipping terms can be easily added
 
-3. **Simulated Order Lookup**
+4. **Simulated Order Lookup**
 
    - Customers can ask questions about orders using their email or order number
    - The system fetches mock order data and responds with appropriate information
 
-4. **Conversational Tone**
+5. **Conversational Tone**
    - Designed to respond in English with a friendly, professional tone
    - Cantonese is also supported for stores targeting Hong Kong or Cantonese-speaking customers
 
@@ -182,11 +207,101 @@ The agent is designed using a **Retrieval-Augmented Generation (RAG)** architect
 | Programming Language  | Python 3.10+                                                                                        |
 | AI Framework          | [LangChain](https://www.langchain.com/), [OpenAI GPT](https://platform.openai.com/) (or other LLMs) |
 | Vector DB / Retrieval | [FAISS](https://github.com/facebookresearch/faiss) or Chroma DB (pluggable)                         |
+| SQL Database          | [SQLAlchemy](https://www.sqlalchemy.org/), [SQLDatabaseToolkit](https://python.langchain.com/docs/integrations/tools/sql_database/) |
 | Knowledge Base Format | Markdown, TXT, or JSON                                                                              |
+| Monitoring & Tracing  | [LangSmith](https://smith.langchain.com/)                                                           |
 | Frontend              | React with TypeScript                                                                               |
 | Backend API           | FastAPI                                                                                            |
 | Database              | PostgreSQL, Redis                                                                                   |
 | Deployment            | Docker, Cloud Platforms (AWS/GCP)                                                                   |
+
+## 🔧 Enhanced Features
+
+### SQL Database Capabilities
+
+The agent now includes powerful SQL database integration:
+
+- **Customer Analytics**: Query customer data, demographics, and behavior
+- **Sales Reports**: Generate sales analytics, top performers, and revenue reports
+- **Inventory Management**: Check product availability and stock levels
+- **Order Tracking**: Look up order history and status
+- **Business Intelligence**: Complex queries for business insights
+
+### SQL Database Toolkit Integration
+
+The agent uses LangChain's official [SQL Database Toolkit](https://python.langchain.com/docs/integrations/tools/sql_database/) for intelligent database querying. This provides several advantages:
+
+#### Features
+- **Natural Language to SQL**: Converts user questions into SQL queries automatically
+- **Schema Awareness**: Understands database structure and relationships
+- **Error Recovery**: Automatically corrects and retries failed queries
+- **Query Optimization**: Generates efficient SQL queries
+- **Multiple Database Support**: Works with SQLite, PostgreSQL, MySQL, and more
+
+#### How It Works
+
+1. **Query Understanding**: The agent analyzes the user's question to determine if it requires database access
+2. **Schema Inspection**: If needed, the agent inspects the database schema to understand available tables and relationships
+3. **SQL Generation**: The LLM generates appropriate SQL queries based on the user's intent
+4. **Query Execution**: The generated SQL is executed against the database
+5. **Result Processing**: Results are formatted into natural language responses
+
+#### Database Schema
+
+The agent comes with a sample Chinook database that includes:
+- **Customer**: Customer information and demographics
+- **Artist**: Music artists and performers
+- **Album**: Music albums and their artists
+- **Track**: Individual music tracks with pricing
+- **Invoice**: Sales transactions
+- **InvoiceLine**: Detailed line items for each sale
+- **Genre**: Music genres and categories
+- **Employee**: Staff information
+- **Playlist**: Customer playlists
+
+#### Custom Database Integration
+
+To use your own database instead of the sample Chinook database:
+
+1. **Update the database connection** in `agent.py`:
+```python
+def _initialize_sql_database(self):
+    """Initialize your custom SQL database."""
+    # Replace with your database connection
+    return create_engine("postgresql://user:password@localhost/mydatabase")
+    # or
+    return create_engine("mysql://user:password@localhost/mydatabase")
+```
+
+2. **Update the system prompt** to reflect your business domain:
+```python
+SYSTEM_PROMPT = """You are an AI assistant for [Your Business]. 
+Your role is to help customers with their questions about [your products/services]...
+"""
+```
+
+#### Performance Considerations
+
+- **Query Limits**: The agent is configured to limit query results to prevent overwhelming responses
+- **Connection Pooling**: Uses SQLAlchemy connection pooling for efficient database access
+- **Memory Management**: In-memory SQLite database for testing, can be configured for persistent storage
+- **Query Caching**: Consider implementing query caching for frequently asked questions
+
+### Example SQL Queries
+
+The agent can handle queries like:
+- "What are the top 3 best selling artists?"
+- "How many customers do we have?"
+- "What is the total revenue from all sales?"
+- "Which country has the most customers?"
+- "Show me the most expensive tracks"
+- "What are the top 5 albums by sales?"
+
+### Tool Selection Logic
+
+The agent intelligently chooses between tools:
+- **Knowledge Base**: For store policies, shipping info, return policies, general product information
+- **SQL Database**: For customer orders, sales data, inventory levels, customer analytics, specific product queries
 
 ## 🔌 Integration Design
 
@@ -437,4 +552,32 @@ CHUNK_OVERLAP=200
 LOG_LEVEL=INFO
 VERBOSE=true
 ```
+
+## 🔒 Security
+
+- Never commit `.env` files to version control
+- Keep your API keys and database credentials secure
+- Use environment variables for all sensitive information
+- Regularly rotate your credentials
+
+## 📋 Configuration
+
+The application uses a flexible configuration system:
+
+1. Environment Variables (`.env`):
+   - Database connection strings
+   - API keys
+   - Other sensitive information
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
