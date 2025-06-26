@@ -8,7 +8,8 @@ SQL database querying, and intelligent routing through a supervisor pattern.
 
 import os
 import logging
-from typing import List, Dict, Optional, Literal, TypedDict, Annotated, Any, Union
+from typing_extensions import TypedDict
+from typing import List, Dict, Optional, Literal, Annotated, Any, Union
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
@@ -20,6 +21,7 @@ from utils import initialize_llm, pretty_print_messages
 from langgraph_supervisor import create_supervisor
 from sql_agent import create_sql_agent
 from knowledge_base_agent import create_knowledge_base_agent
+from recommendation_agent import create_recommendation_agent
 
 # Configure logging
 logging.basicConfig(
@@ -34,18 +36,36 @@ SYSTEM_PROMPT = """You are a supervisor agent responsible for coordinating the f
    inventory information, and business intelligence questions.
 
 2. **knowledge_base_agent**: Answers questions about store policies, shipping information, 
-   return policies, FAQs, and general product information from the knowledge base.
+   return policies, FAQs from the knowledge base.
+
+3. **recommendation_agent**: Provides personalized product recommendations based on user preferences, 
+   chat history, and available product data.
 
 **Routing Guidelines:**
 - Route database-related queries (customer data, sales, analytics, inventory, product information) to sql_agent
 - Route policy and general information queries to knowledge_base_agent
+- Route product recommendation requests to recommendation_agent
 - For questions about conversation history, context, or personal information (like "who am i", "what did we talk about", etc.), answer directly using the conversation context
 - For follow-up questions that reference previous conversation, answer directly using the conversation context
 - Assign work to one agent at a time (no parallel processing)
 - If the knowledge_base_agent cannot answer, route to sql_agent as fallback
 - Only delegate to specialized agents for their specific domains
 
-**Important:** Answer conversation history and context questions directly. Only route to specialized agents for their specific domains (database queries, store policies, etc.).
+**Examples:**
+- "How many customers do we have?" → sql_agent
+- "What's your return policy?" → knowledge_base_agent
+- "Show me top selling products" → sql_agent
+- "How long does shipping take?" → knowledge_base_agent
+- "Can you recommend some rock music albums?" → recommendation_agent
+- "I'm looking for jazz music under $20" → recommendation_agent
+- "What are the best-selling products in the classical genre?" → recommendation_agent
+- "Show me products similar to what I bought before" → recommendation_agent
+- "Recommend something based on my preferences" → recommendation_agent
+- "Who am I?" → Answer directly using conversation context
+- "What did we talk about?" → Answer directly using conversation context
+- "Can you remember our previous conversation?" → Answer directly using conversation context
+
+**Important:** Answer conversation history and context questions directly. Only route to specialized agents for their specific domains (database queries, store policies, product recommendations, etc.).
 """
 
 
@@ -176,7 +196,7 @@ class Agent:
     def _initialize_agents(self) -> None:
         """Initialize specialized agents."""
         try:
-            # Initialize SQL agent
+            # Initialize SQL agent first (needed by recommendation agent)
             self.sql_agent = create_sql_agent()
             logger.debug("SQL agent initialized")
 
@@ -187,6 +207,12 @@ class Agent:
             )
             logger.debug("Knowledge base agent initialized")
 
+            # Initialize recommendation agent (depends on SQL agent)
+            self.recommendation_agent = create_recommendation_agent(
+                sql_agent=self.sql_agent
+            )
+            logger.debug("Recommendation agent initialized")
+
         except Exception as e:
             logger.error(f"Failed to initialize agents: {str(e)}")
             raise AgentError(f"Agent initialization failed: {str(e)}") from e
@@ -196,7 +222,11 @@ class Agent:
         try:
             self.supervisor = create_supervisor(
                 model=self.llm,
-                agents=[self.sql_agent, self.knowledge_base_agent],
+                agents=[
+                    self.sql_agent,
+                    self.knowledge_base_agent,
+                    self.recommendation_agent,
+                ],
                 prompt=SYSTEM_PROMPT,
                 add_handoff_back_messages=True,
                 output_mode="full_history",
@@ -248,7 +278,11 @@ class Agent:
             }
 
             # Configure the run with thread ID for memory
-            config = {"configurable": {"thread_id": thread_id}} if thread_id else {}
+            config = (
+                {"configurable": {"thread_id": thread_id}, "recursion_limit": 10}
+                if thread_id
+                else {}
+            )
 
             # Process through supervisor
             final_chunk = None
@@ -314,7 +348,7 @@ class Agent:
     def _determine_agent_used(self, final_chunk: Dict[str, Any]) -> str:
         """Determine which agent was used based on the final chunk."""
         # Look for the agent that has the most recent activity
-        for agent_name in ["sql_agent", "knowledge_base_agent"]:
+        for agent_name in ["sql_agent", "knowledge_base_agent", "recommendation_agent"]:
             if agent_name in final_chunk:
                 return agent_name
         return "supervisor"
