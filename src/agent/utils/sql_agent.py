@@ -12,11 +12,14 @@ from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
 from langgraph.prebuilt import create_react_agent
-from langchain_openai import ChatOpenAI
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_community.utilities.sql_database import SQLDatabase
 
-from utils import initialize_llm, initialize_sql_database, pretty_print_messages
+from src.agent.utils.utils import (
+    initialize_llm,
+    initialize_sql_database,
+    pretty_print_messages,
+)
 
 # Configure logging
 logger = logging.getLogger(__name__)

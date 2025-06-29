@@ -17,11 +17,12 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.message import AnyMessage, add_messages
 from langchain_core.messages import HumanMessage, AIMessage
 
-from utils import initialize_llm, pretty_print_messages
+from src.agent.utils.utils import initialize_llm, pretty_print_messages
 from langgraph_supervisor import create_supervisor
-from sql_agent import create_sql_agent
-from knowledge_base_agent import create_knowledge_base_agent
-from recommendation_agent import create_recommendation_agent
+from src.agent.utils.sql_agent import create_sql_agent
+from src.agent.utils.knowledge_base_agent import create_knowledge_base_agent
+from src.agent.utils.recommendation_agent import create_recommendation_agent
+from src.agent.utils.state import AgentConfig, AgentState
 
 # Configure logging
 logging.basicConfig(
@@ -67,25 +68,6 @@ SYSTEM_PROMPT = """You are a supervisor agent responsible for coordinating the f
 
 **Important:** Answer conversation history and context questions directly. Only route to specialized agents for their specific domains (database queries, store policies, product recommendations, etc.).
 """
-
-
-class AgentState(TypedDict):
-    """State definition for the agent workflow."""
-
-    messages: Annotated[List[AnyMessage], add_messages]
-
-
-@dataclass
-class AgentConfig:
-    """Configuration for the AI agent."""
-
-    llm_provider: str = "openrouter"
-    embedding_provider: str = "huggingface"
-    model_name: Optional[str] = None
-    temperature: float = 0.7
-    knowledge_base_dir: str = "./knowledge_base"
-    verbose: bool = False
-    max_retries: int = 3
 
 
 class AgentError(Exception):
@@ -230,7 +212,7 @@ class Agent:
                 prompt=SYSTEM_PROMPT,
                 add_handoff_back_messages=True,
                 output_mode="full_history",
-            ).compile(checkpointer=MemorySaver())
+            ).compile(name="supervisor")
 
             logger.debug("Supervisor workflow initialized")
 
@@ -389,3 +371,8 @@ class Agent:
         except Exception as e:
             logger.error(f"Failed to reset conversation: {str(e)}")
             return False
+
+
+agent = Agent()
+
+graph = agent.supervisor

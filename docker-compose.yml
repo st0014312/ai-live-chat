@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: langgraph-postgres
+    environment:
+      POSTGRES_DB: langgraph
+      POSTGRES_USER: langgraph_user
+      POSTGRES_PASSWORD: langgraph_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langgraph_user -d langgraph"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - langgraph-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: langgraph-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - langgraph-network
+
+  # LangGraph API Server
+  langgraph-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: langgraph-api
+    environment:
+      # Database Configuration
+      DATABASE_URI: postgresql://langgraph_user:langgraph_password@postgres:5432/langgraph
+      REDIS_URI: redis://redis:6379/0    
+      # Vector Store Configuration
+      VECTOR_STORE_PATH: /deps/ai-live-chat/vector_store
+      KNOWLEDGE_BASE_DIR: /deps/ai-live-chat/knowledge_base
+      # Logging Configuration
+      LOG_LEVEL: INFO
+      VERBOSE: true
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./vector_store:/deps/ai-live-chat/vector_store
+      - ./knowledge_base:/deps/ai-live-chat/knowledge_base
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - langgraph-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  langgraph-network:
+    driver: bridge
