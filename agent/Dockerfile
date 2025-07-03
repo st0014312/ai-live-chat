@@ -3,13 +3,13 @@ FROM langchain/langgraph-api:3.11-wolfi
 
 
 # -- Adding local package . --
-ADD . /deps/ai-live-chat
+ADD . /deps/agent
 # -- End of local package . --
 
 # -- Installing all local dependencies --
 RUN PYTHONDONTWRITEBYTECODE=1 uv pip install --system --no-cache-dir -c /api/constraints.txt -e /deps/*
 # -- End of local dependencies install --
-ENV LANGSERVE_GRAPHS='{"agent": "/deps/ai-live-chat/src/agent/graph.py:graph"}'
+ENV LANGSERVE_GRAPHS='{"agent": "/deps/agent/src/agent/graph.py:graph", "test_agent": "/deps/agent/src/agent/test_agent.py:graph"}'
 
 
 
@@ -24,4 +24,4 @@ RUN rm -rf /usr/lib/python*/site-packages/pip* /usr/lib/python*/site-packages/se
 RUN uv pip uninstall --system pip setuptools wheel && rm /usr/bin/uv /usr/bin/uvx
 # -- End of pip removal --
 
-WORKDIR /deps/ai-live-chat
+WORKDIR /deps/agent

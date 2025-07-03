@@ -11,9 +11,6 @@ class AgentConfig:
     llm_provider: str = "openrouter"
     embedding_provider: str = "huggingface"
     model_name: Optional[str] = None
-    temperature: float = 0.7
-    knowledge_base_dir: str = "./knowledge_base"
-    verbose: bool = False
     max_retries: int = 3
 
 
