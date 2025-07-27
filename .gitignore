@@ -40,3 +40,4 @@ Thumbs.db
 
 # Data
 vector_store/
+**/.langgraph_api

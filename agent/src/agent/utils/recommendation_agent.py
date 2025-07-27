@@ -17,11 +17,9 @@ from dotenv import load_dotenv
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
-from langgraph.graph.graph import CompiledGraph
-from langgraph.prebuilt import create_react_agent
 from langgraph_supervisor import create_supervisor
 
-from utils import initialize_llm
+from src.agent.utils.utils import initialize_llm
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -39,7 +37,7 @@ class AgentState(TypedDict):
 
 
 def create_recommendation_agent(
-    sql_agent: CompiledGraph,
+    sql_agent: Any,
     model_name: Optional[str] = None,
     temperature: Optional[float] = None,
     max_recommendations: int = DEFAULT_MAX_RECOMMENDATIONS,
