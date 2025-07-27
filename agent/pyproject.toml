@@ -9,7 +9,7 @@ readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "langgraph>=0.4.8",
+    "langgraph>=0.5.1",
     "python-dotenv>=1.0.1",
     "langgraph-supervisor>=0.0.27",
     "langchain-openai>=0.3.23",
@@ -20,6 +20,8 @@ dependencies = [
     "langchain-text-splitters>=0.3.8",
     "sentence-transformers>=2.2.2",
     "faiss-cpu>=1.11.0",
+    "fastapi[standard]>=0.115.14",
+    "copilotkit>=0.1.54",
 ]
 
 

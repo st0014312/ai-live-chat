@@ -9,9 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@copilotkit/react-core": "^1.9.1",
-    "@copilotkit/react-ui": "^1.9.1",
-    "@copilotkit/runtime": "^1.9.1",
+    "@copilotkit/react-core": "^1.9.3",
+    "@copilotkit/react-ui": "^1.9.3",
+    "@copilotkit/runtime": "^1.9.3",
     "@langchain/core": "^0.3.61",
     "@langchain/langgraph-sdk": "^0.0.88",
     "@radix-ui/react-tooltip": "^1.2.7",

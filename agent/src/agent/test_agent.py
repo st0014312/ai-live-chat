@@ -24,7 +24,6 @@ tech_agent = create_react_agent(
     prompt="you are a professional tech support agent. You are given a question and you need to answer it.",
 )
 
-
 graph = create_supervisor(
     model=llm,
     agents=[math_agent, tech_agent],
