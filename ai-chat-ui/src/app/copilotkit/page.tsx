@@ -50,11 +50,11 @@ function Chat(props: HTMLAttributes<HTMLDivElement>) {
     name: process.env.NEXT_PUBLIC_COPILOTKIT_AGENT_NAME || "",
   });
 
-  // useLangGraphInterrupt({
-  //   render: ({ event, result, resolve }) => (
-  //     <Interrupt event={event} result={result} resolve={resolve} />
-  //   ),
-  // });
+  useLangGraphInterrupt({
+    render: ({ event, resolve }) => (
+      <Interrupt event={event} resolve={resolve} />
+    ),
+  });
 
   // useCopilotAction({
   //   name: "*",

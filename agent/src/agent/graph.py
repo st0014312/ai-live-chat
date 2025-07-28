@@ -48,6 +48,7 @@ SYSTEM_PROMPT = """You are a supervisor agent responsible for coordinating the f
 - Assign work to one agent at a time (no parallel processing)
 - If the knowledge_base_agent cannot answer, route to sql_agent as fallback
 - Only delegate to specialized agents for their specific domains
+- **IMPORTANT**: When an agent transfers back to you after completing their response, do NOT repeat or rephrase their answer. Simply acknowledge that the task is complete or provide any additional context if needed.
 
 **Examples:**
 - "How many customers do we have?" → sql_agent
@@ -85,8 +86,7 @@ graph = create_supervisor(
     agents=[general_agent, recommendation_agent],
     prompt=SYSTEM_PROMPT,
     tools=[],
-    add_handoff_back_messages=True,
-    output_mode="full_history",
+    output_mode="last_message",
     config_schema=AgentConfig,
     state_schema=AgentState,
 ).compile(name="ai-chat-agent")

@@ -21,7 +21,6 @@ dependencies = [
     "sentence-transformers>=2.2.2",
     "faiss-cpu>=1.11.0",
     "fastapi[standard]>=0.115.14",
-    "copilotkit>=0.1.54",
 ]
 
 

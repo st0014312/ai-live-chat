@@ -70,6 +70,20 @@ services:
       - langgraph-network
     restart: unless-stopped
 
+  # AI Chat UI
+  ai-chat-ui:
+    build:
+      context: ./ai-chat-ui
+      dockerfile: Dockerfile
+    container_name: ai-chat-ui
+    ports:
+      - "43000:3000"
+    depends_on:
+      langgraph-api:
+        condition: service_healthy
+    networks:
+      - langgraph-network
+
 volumes:
   postgres_data:
     driver: local
